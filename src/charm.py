@@ -21,6 +21,8 @@ from charms.tls_certificates_interface.v4.tls_certificates import (
     ProviderCertificate,
     TLSCertificatesProvidesV4,
 )
+from cryptography import x509
+from cryptography.hazmat.primitives import serialization
 from ops import ModelError, Secret, SecretNotFoundError, main
 from ops.charm import CharmBase, CollectStatusEvent
 from ops.framework import EventBase
@@ -143,19 +145,28 @@ class LegoCharm(CharmBase):
                 e,
             )
             return
+        end_certificate = self._get_end_certificate(response.certificate)
         self.tls_certificates.set_relation_certificate(
             provider_certificate=ProviderCertificate(
-                certificate=Certificate.from_string(response.certificate),
+                certificate=Certificate.from_string(end_certificate),
                 certificate_signing_request=CertificateSigningRequest.from_string(response.csr),
                 ca=Certificate.from_string(response.issuer_certificate),
                 chain=[
                     Certificate.from_string(cert)
-                    for cert in [response.certificate, response.issuer_certificate]
+                    for cert in _get_chain_from_certificate_bundle(
+                        response.certificate, response.issuer_certificate
+                    )
                 ],
                 relation_id=relation_id,
             ),
         )
         logger.info("generated certificate for domain %s", response.metadata.domain)
+
+    def _get_end_certificate(self, cert: str) -> str:
+        """Get the end certificate from the ACME provider."""
+        certs = x509.load_pem_x509_certificates(cert.encode())
+        first_cert = certs[0].public_bytes(encoding=serialization.Encoding.PEM)
+        return first_cert.decode()
 
     def _get_certificate_fulfillment_status(self) -> str:
         """Return the status message reflecting how many certificate requests are still pending."""
@@ -311,6 +322,23 @@ def _server_is_valid(server: str) -> bool:
     if not all([urlparts.scheme, urlparts.netloc]):
         return False
     return True
+
+
+def _get_chain_from_certificate_bundle(cert: str, issuer: str | None) -> list[str]:
+    """Get the chain from certificate bundle and add the issuer if it's not present."""
+    certs = x509.load_pem_x509_certificates(cert.encode())
+    if issuer:
+        issuer_cert = x509.load_pem_x509_certificate(issuer.encode())
+        issuer_in_chain = any(
+            existing_cert.public_bytes(encoding=serialization.Encoding.PEM)
+            == issuer_cert.public_bytes(encoding=serialization.Encoding.PEM)
+            for existing_cert in certs
+        )
+
+        if not issuer_in_chain:
+            certs.append(issuer_cert)
+
+    return [cert.public_bytes(encoding=serialization.Encoding.PEM).decode() for cert in certs]
 
 
 if __name__ == "__main__":  # pragma: nocover
