@@ -289,10 +289,12 @@ class TestLegoOperatorCharmConfigure:
         mock_add_certificates.assert_called_with({str(ca)})
 
     @patch("charm.generate_private_key")
-    def test_given_valid_config_when_configure_then_private_key_is_generated_and_stored(self, mock_generate_private_key: MagicMock):
+    def test_given_valid_config_when_configure_then_private_key_is_generated_and_stored(
+        self, mock_generate_private_key: MagicMock
+    ):
         mock_account_pk = generate_private_key()
         mock_generate_private_key.return_value = mock_account_pk
-        
+
         state = State(
             leader=True,
             secrets=[
@@ -307,4 +309,6 @@ class TestLegoOperatorCharmConfigure:
         )
         state_out = self.ctx.run(self.ctx.on.config_changed(), state)
         assert "account-private-key-example@email.com" in [s.label for s in state_out.secrets]
-        assert {"private-key": str(mock_account_pk)} in [s.tracked_content for s in state_out.secrets]
+        assert {"private-key": str(mock_account_pk)} in [
+            s.tracked_content for s in state_out.secrets
+        ]

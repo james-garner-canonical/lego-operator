@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 CERTIFICATES_RELATION_NAME = "certificates"
 CA_TRANSFER_RELATION_NAME = "send-ca-cert"
-ACCOUNT_PRIVATE_KEY_SECRET_LABEL_PREFIX = "account-private-key"
+ACCOUNT_PRIVATE_KEY_SECRET_LABEL_PREFIX = "account-private-key-"
 
 
 class LegoCharm(CharmBase):
@@ -265,7 +265,7 @@ class LegoCharm(CharmBase):
     @property
     def _account_private_key_secret_label(self) -> str:
         """Get the account private key secret label."""
-        return f"{ACCOUNT_PRIVATE_KEY_SECRET_LABEL_PREFIX}-{self._email}"
+        return f"{ACCOUNT_PRIVATE_KEY_SECRET_LABEL_PREFIX}{self._email}"
 
     @contextmanager
     def maintenance_status(self, message: str):
