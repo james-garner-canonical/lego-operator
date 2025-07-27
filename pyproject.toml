@@ -15,6 +15,7 @@ dependencies = [
 [dependency-groups]
 test = [
     "coverage[toml]",
+    "jubilant",
     "juju",
     "pytest",
     "pytest-operator",

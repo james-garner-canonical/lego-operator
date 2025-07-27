@@ -4,6 +4,7 @@
 
 import os
 
+import jubilant
 import pytest
 
 
@@ -17,6 +18,12 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     """
     parser.addoption(
         "--charm_path", action="store", default=None, help="Path to the charm under test"
+    )
+    parser.addoption(
+        "--keep-models",
+        action="store_true",
+        default=False,
+        help="keep temporarily-created models",
     )
 
 
@@ -33,3 +40,17 @@ def pytest_configure(config: pytest.Config) -> None:
         pytest.exit("The --charm_path option is required. Tests aborted.")
     if not os.path.exists(charm_path):
         pytest.exit(f"The path specified for the charm under test does not exist: {charm_path}")
+
+
+@pytest.fixture(scope="module")
+def juju(request: pytest.FixtureRequest):
+    keep_models = bool(request.config.getoption("--keep-models"))
+
+    with jubilant.temp_model(keep=keep_models) as juju:
+        juju.wait_timeout = 1000
+
+        yield juju  # run the test
+
+        if request.session.testsfailed:
+            log = juju.debug_log(limit=1000)
+            print(log, end="")
