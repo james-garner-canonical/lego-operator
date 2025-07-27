@@ -19,12 +19,6 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption(
         "--charm_path", action="store", default=None, help="Path to the charm under test"
     )
-    parser.addoption(
-        "--keep-models",
-        action="store_true",
-        default=False,
-        help="keep temporarily-created models",
-    )
 
 
 def pytest_configure(config: pytest.Config) -> None:
