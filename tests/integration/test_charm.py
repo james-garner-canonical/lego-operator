@@ -21,7 +21,7 @@ def test_build_and_deploy_with_jubilant(juju: jubilant.Juju, request: pytest.Fix
         "plugin": "namecheap",
     }
     juju.deploy(charm, app=APP_NAME, config=config)
-    juju.wait(lambda status: jubilant.all_blocked(status, APP_NAME))
+    juju.wait(lambda status: workload_status(status) == "blocked")
 
     secret_uri = juju.add_secret(
         "plugin-credentials", {"namecheap-api-key": "key1", "namecheap-api-user": "me"}
@@ -29,5 +29,10 @@ def test_build_and_deploy_with_jubilant(juju: jubilant.Juju, request: pytest.Fix
     juju.grant_secret(secret_uri, app=APP_NAME)
     juju.config(APP_NAME, {"plugin-config-secret-id": secret_uri.unique_identifier})
     juju.wait(lambda status: jubilant.all_active(status, APP_NAME))
-    (unit_status,) = juju.status().apps[APP_NAME].units.values()
-    assert unit_status.workload_status == "active"
+
+    assert workload_status(juju.status()) == "active"
+
+
+def workload_status(status: jubilant.Status) -> str:
+    (unit_status,) = status.apps[APP_NAME].units.values()
+    return unit_status.workload_status.current
