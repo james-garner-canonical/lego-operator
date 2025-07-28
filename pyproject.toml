@@ -16,9 +16,7 @@ dependencies = [
 test = [
     "coverage[toml]",
     "jubilant",
-    "juju",
     "pytest",
-    "pytest-operator",
     "pytest-asyncio==0.21.2",
     "ops[testing]",
 ]
