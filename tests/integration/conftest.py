@@ -3,6 +3,8 @@
 # See LICENSE file for licensing details.
 
 import os
+import pathlib
+import typing
 
 import jubilant
 import pytest
@@ -42,8 +44,14 @@ def pytest_configure(config: pytest.Config) -> None:
         pytest.exit(f"The path specified for the charm under test does not exist: {charm_path}")
 
 
+@pytest.fixture(scope="session")
+def charm_path(request: pytest.FixtureRequest) -> pathlib.Path:
+    path: str = request.config.getoption("--charm_path")  # type: ignore
+    return pathlib.Path(path).resolve()
+
+
 @pytest.fixture(scope="module")
-def juju(request: pytest.FixtureRequest):
+def juju(request: pytest.FixtureRequest) -> typing.Iterator[jubilant.Juju]:
     keep_models = bool(request.config.getoption("--keep-models"))
 
     with jubilant.temp_model(keep=keep_models) as juju:
