@@ -28,28 +28,8 @@ jobs:
       - lint-report
       - static-analysis
       - unit-tests-with-coverage
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        arch:
-          - arch: amd64
-            runner: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup LXD
-        uses: canonical/setup-lxd@main
-        with:
-            channel: 5.21/stable
-      - name: Install charmcraft
-        run: sudo snap install charmcraft --classic
-      - name: Build charm under test
-        run: charmcraft pack --verbose
-      - name: Archive Charm Under Test
-        uses: actions/upload-artifact@v4
-        with:
-          name: built-charm-${{ matrix.arch.arch }}
-          path: "*.charm"
-          retention-days: 5
+    uses: canonical/identity-credentials-workflows/.github/workflows/build-charm-multiarch.yaml@v0
+    secrets: inherit
 
   integration-test:
     needs:
