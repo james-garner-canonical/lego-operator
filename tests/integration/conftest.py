@@ -2,6 +2,7 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import json
 import os
 import pathlib
 import typing
@@ -56,7 +57,9 @@ def juju(request: pytest.FixtureRequest) -> typing.Iterator[jubilant.Juju]:
 
     juju = jubilant.Juju()
     juju.wait_timeout = 1000
-    juju.add_model("model")
+    models = json.loads(juju.cli("models", "--format=json"))
+    if not any(m["short-name"] == "model" for m in models["models"]):
+        juju.add_model("model")
     try:
         yield juju
     finally:
