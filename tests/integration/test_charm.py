@@ -37,16 +37,17 @@ def test_deploy_lego(juju: jubilant.Juju, charm_path: pathlib.Path):
 
 
 def test_deploy_functional(juju: jubilant.Juju, charm_path: pathlib.Path):
-
-    subprocess.check_output([
-        "microk8s",
-        "kubectl",
-        "apply",
-        "-f",
-        "tests/integration/pebble-deployment.yaml",
-        "-f",
-        "tests/integration/pebble-challtestsrv-deployment.yaml",
-    ])
+    subprocess.check_output(
+        [
+            "microk8s",
+            "kubectl",
+            "apply",
+            "-f",
+            "tests/integration/pebble-deployment.yaml",
+            "-f",
+            "tests/integration/pebble-challtestsrv-deployment.yaml",
+        ],
+    )
 
     uri = juju.add_secret(
         "plugin-credentials",
@@ -54,7 +55,7 @@ def test_deploy_functional(juju: jubilant.Juju, charm_path: pathlib.Path):
             "httpreq-endpoint": "http://pebble-challtestsrv:8053",  # DNS server
             "http01-iface": "http://pebble-challtestsrv",  # unfortunately no solver is detected for http-01, so we always fall back to dns-01
             "http01-port": "5002",
-        }
+        },
     )
     config = {
         "email": "example@example.com",
@@ -67,11 +68,14 @@ def test_deploy_functional(juju: jubilant.Juju, charm_path: pathlib.Path):
     juju.wait(jubilant.all_active)
 
     p = pathlib.Path("pebble-ca.pem")
-    urllib.request.urlretrieve("https://raw.githubusercontent.com/letsencrypt/pebble/refs/heads/main/test/certs/pebble.minica.pem", p)
+    url = "https://raw.githubusercontent.com/letsencrypt/pebble/refs/heads/main/test/certs/pebble.minica.pem"
+    urllib.request.urlretrieve(url, p)
+    # TODO: set SSL_CERT_FILE via secret data instead
     juju.scp(p, "lego/0:/etc/ssl/certs/")
-    juju.exec("c_rehash", "/etc/ssl/certs/", unit="lego/0")  # TODO: set SSL_CERT_FILE via secret data instead
+    juju.exec("c_rehash", "/etc/ssl/certs/", unit="lego/0")
 
     juju.deploy("tls-certificates-requirer", config={"common_name": "example.com"}, channel="edge")
     juju.integrate("lego", "tls-certificates-requirer")
-    juju.wait(jubilant.all_active)  # failure to acquire certificate doesn't show up in status, only in logs ...
+    # failure to acquire certificate doesn't show up in status, only in logs ...
+    juju.wait(jubilant.all_active)
     # certificate fails to be acquired because pebble-challtestsrv doesn't appear to respond to anything
