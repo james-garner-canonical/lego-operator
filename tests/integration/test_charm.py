@@ -53,21 +53,21 @@ def test_deploy_functional(juju: jubilant.Juju, charm_path: pathlib.Path):
         subprocess.check_output(["sudo", *microk8s_cmd])
 
     # WIP: expose pebble-challtestsrv management endpoint for configuration
-    #time.sleep(3)
-    #port_forward_cmd = [
-    #    "microk8s",
-    #    "kubectl",
-    #    "port-forward",
-    #    "svc/pebble-challtestsrv",
-    #    "--namespace",
-    #    "model",
-    #    "8055:8055",
-    #]
-    #try:
-    #    subprocess.check_output(port_forward_cmd)
-    #except subprocess.CalledProcessError:
-    #    subprocess.check_output(["sudo", *port_forward_cmd])
-    #url = "http://localhost:8055/"
+    # time.sleep(3)
+    # port_forward_cmd = [
+    #     "microk8s",
+    #     "kubectl",
+    #     "port-forward",
+    #     "svc/pebble-challtestsrv",
+    #     "--namespace",
+    #     "model",
+    #     "8055:8055",
+    # ]
+    # try:
+    #     subprocess.check_output(port_forward_cmd)
+    # except subprocess.CalledProcessError:
+    #     subprocess.check_output(["sudo", *port_forward_cmd])
+    # url = "http://localhost:8055/"
 
     uri = juju.add_secret(
         "plugin-config",
