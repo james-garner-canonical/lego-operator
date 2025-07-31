@@ -37,17 +37,19 @@ def test_deploy_lego(juju: jubilant.Juju, charm_path: pathlib.Path):
 
 
 def test_deploy_functional(juju: jubilant.Juju, charm_path: pathlib.Path):
-    subprocess.check_output(
-        [
-            "microk8s",
-            "kubectl",
-            "apply",
-            "-f",
-            "tests/integration/pebble-deployment.yaml",
-            "-f",
-            "tests/integration/pebble-challtestsrv-deployment.yaml",
-        ],
-    )
+    microk8s_cmd = [
+        "microk8s",
+        "kubectl",
+        "apply",
+        "-f",
+        "tests/integration/pebble-deployment.yaml",
+        "-f",
+        "tests/integration/pebble-challtestsrv-deployment.yaml",
+    ]
+    try:
+        subprocess.check_output(microk8s_cmd)
+    except subprocess.CalledProcessError:
+        subprocess.check_output(["sudo", *microk8s_cmd])
 
     uri = juju.add_secret(
         "plugin-credentials",
