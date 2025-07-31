@@ -30,3 +30,4 @@ spec:
     - name: dns
       port: 8053
       targetPort: 8053
+      protocol: UDP
