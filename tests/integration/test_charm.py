@@ -5,7 +5,7 @@
 import logging
 import pathlib
 import subprocess
-import tempfile
+import urllib.request
 
 import jubilant
 
@@ -38,38 +38,44 @@ def test_deploy_lego(juju: jubilant.Juju, charm_path: pathlib.Path):
 
 def test_deploy_functional(juju: jubilant.Juju, charm_path: pathlib.Path):
 
-    subprocess.check_output(["microk8s", "kubectl", "apply", "-f", "pebble-deployment.yaml"])
-    subprocess.check_output(["microk8s", "kubectl", "apply", "-f", "pebble-challtestsrv-deployment.yaml"])
+    subprocess.check_output([
+        "microk8s",
+        "kubectl",
+        "apply",
+        "-f",
+        "tests/integration/pebble-deployment.yaml",
+        "-f",
+        "tests/integration/pebble-challtestsrv-deployment.yaml",
+    ])
 
-    uri = juju.add_secret("plugin-credentials", {"httpreq-endpoint": "http://pebble-challtestsrv:8055"})
+    uri = juju.add_secret("plugin-credentials", {"httpreq-endpoint": "http://pebble-challtestsrv:8053"})  # DNS server
     config = {
         "email": "example@example.com",
         "plugin": "httpreq",
-        "server": "https://pebble:80/dir",
+        "server": "https://pebble:14000/dir",  # ACME server
         "plugin-config-secret-id": uri.unique_identifier,
     }
     juju.deploy(charm_path, config=config)
     juju.grant_secret("plugin-credentials", "lego")
+    juju.wait(jubilant.all_active)
 
     # copy CA cert from letsencrypt's pebble to lego
-    pebble_ca = subprocess.check_output([
-        "microk8s",
-        "kubectl",
-        "exec",
-        "-n",
-        "model",
-        "pebble",
-        "--",
-        "cat",
-        "/test/certs/pebble.minica.pem",
-    ])
-    with tempfile.NamedTemporaryFile("wb") as f:
-        f.write(pebble_ca)
-        f.flush()
-        juju.scp(f.name, "lego/0:/etc/ssl/certs/")
+    # pebble_ca = subprocess.check_output([
+    #     "microk8s",
+    #     "kubectl",
+    #     "exec",
+    #     "-n",
+    #     "model",
+    #     "pebble",
+    #     "--",
+    #     "cat",
+    #     "/test/certs/pebble.minica.pem",
+    # ])
+    p = pathlib.Path("pebble-ca.pem")
+    urllib.request.urlretrieve("https://raw.githubusercontent.com/letsencrypt/pebble/refs/heads/main/test/certs/pebble.minica.pem", p)
+    juju.scp(p, "lego/0:/etc/ssl/certs/")
     juju.exec("c_rehash", "/etc/ssl/certs/", unit="lego/0")
 
-    config = {"common_name": "example.com"}
-    juju.deploy("tls-certificates-requirer", config=config, channel="edge")
+    juju.deploy("tls-certificates-requirer", config={"common_name": "example.com"}, channel="edge")
     juju.integrate("lego", "tls-certificates-requirer")
     juju.wait(jubilant.all_active)
