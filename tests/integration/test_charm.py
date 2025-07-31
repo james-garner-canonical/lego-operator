@@ -5,9 +5,11 @@
 import logging
 import pathlib
 import subprocess
+import time
 import urllib.request
 
 import jubilant
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -51,10 +53,26 @@ def test_deploy_functional(juju: jubilant.Juju, charm_path: pathlib.Path):
     except subprocess.CalledProcessError:
         subprocess.check_output(["sudo", *microk8s_cmd])
 
+    #time.sleep(3)
+    #port_forward_cmd = [
+    #    "microk8s",
+    #    "kubectl",
+    #    "port-forward",
+    #    "svc/pebble-challtestsrv",
+    #    "--namespace",
+    #    "model",
+    #    "8055:8055",
+    #]
+    #try:
+    #    subprocess.check_output(port_forward_cmd)
+    #except subprocess.CalledProcessError:
+    #    subprocess.check_output(["sudo", *port_forward_cmd])
+    #url = "http://localhost:8055/"
+
     uri = juju.add_secret(
-        "plugin-credentials",
+        "plugin-config",
         {
-            "httpreq-endpoint": "http://pebble-challtestsrv:8053",  # DNS server
+            "httpreq-endpoint": "http://pebble-challtestsrv:8055",  # DNS server
             "http01-iface": "http://pebble-challtestsrv",  # unfortunately no solver is detected for http-01, so we always fall back to dns-01
             "http01-port": "5002",
         },
@@ -66,7 +84,7 @@ def test_deploy_functional(juju: jubilant.Juju, charm_path: pathlib.Path):
         "plugin-config-secret-id": uri.unique_identifier,
     }
     juju.deploy(charm_path, config=config)
-    juju.grant_secret("plugin-credentials", "lego")
+    juju.grant_secret(uri.unique_identifier, "lego")
     juju.wait(jubilant.all_active)
 
     p = pathlib.Path("pebble-ca.pem")
