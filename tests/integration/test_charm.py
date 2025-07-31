@@ -5,11 +5,9 @@
 import logging
 import pathlib
 import subprocess
-import time
 import urllib.request
 
 import jubilant
-import requests
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +34,7 @@ def test_deploy_lego(juju: jubilant.Juju, charm_path: pathlib.Path):
 
     assert workload_status(juju.status()) == "active"
     juju.remove_application(APP_NAME)
+    juju.remove_secret(secret_uri)
 
 
 def test_deploy_functional(juju: jubilant.Juju, charm_path: pathlib.Path):
@@ -53,6 +52,7 @@ def test_deploy_functional(juju: jubilant.Juju, charm_path: pathlib.Path):
     except subprocess.CalledProcessError:
         subprocess.check_output(["sudo", *microk8s_cmd])
 
+    # WIP: expose pebble-challtestsrv management endpoint for configuration
     #time.sleep(3)
     #port_forward_cmd = [
     #    "microk8s",
@@ -72,7 +72,7 @@ def test_deploy_functional(juju: jubilant.Juju, charm_path: pathlib.Path):
     uri = juju.add_secret(
         "plugin-config",
         {
-            "httpreq-endpoint": "http://pebble-challtestsrv:8055",  # DNS server
+            "httpreq-endpoint": "http://pebble-challtestsrv:8053",  # DNS server
             "http01-iface": "http://pebble-challtestsrv",  # unfortunately no solver is detected for http-01, so we always fall back to dns-01
             "http01-port": "5002",
         },
