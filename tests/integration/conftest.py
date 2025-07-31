@@ -54,11 +54,15 @@ def charm_path(request: pytest.FixtureRequest) -> pathlib.Path:
 def juju(request: pytest.FixtureRequest) -> typing.Iterator[jubilant.Juju]:
     keep_models = bool(request.config.getoption("--keep-models"))
 
-    with jubilant.temp_model(keep=keep_models) as juju:
-        juju.wait_timeout = 1000
-
-        yield juju  # run the test
-
+    juju = jubilant.Juju()
+    juju.wait_timeout = 1000
+    juju.add_model("model")
+    try:
+        yield juju
+    finally:
         if request.session.testsfailed:
             log = juju.debug_log(limit=1000)
             print(log, end="")
+        if not keep_models:
+            assert juju.model is not None
+            juju.destroy_model(juju.model, destroy_storage=True, force=True)
