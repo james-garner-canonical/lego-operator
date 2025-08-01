@@ -24,6 +24,11 @@ dev = [
     "pyright",
     "ruff",
 ]
+integration = [  # used by injected DNS server, not by tests themselves
+    "dnslib",
+    "dnspython",
+    "flask",
+]
 
 # Testing tools configuration
 [tool.coverage.run]
