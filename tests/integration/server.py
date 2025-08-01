@@ -1,17 +1,9 @@
-#!/usr/bin/env -S uv run --script
-# /// script
-# requires-python = ">=3.11"
-# dependencies = [
-#   "dnslib",
-#   "dnspython",
-#   "flask",
-# ]
-# ///
 """A combined HTTP + DNS server for ACME DNS-01 testing with lego.
 
 This server:
   - Listens on /present and /cleanup to register/clear DNS-01 TXT challenges.
   - Serves DNS requests for TXT records based on registered challenges.
+  - Intercepts DNS requests related to verifying whether the records have propagated.
   - Forwards all other DNS requests to the cluster DNS.
 
 Run as root or with CAP_NET_BIND_SERVICE to bind to port 53.
