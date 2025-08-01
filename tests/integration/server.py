@@ -111,21 +111,6 @@ class AcmeResolver(BaseResolver):
             return dns_to_dnslib(upstream_response, request)
 
 
-# --- Run both servers ---
-def start_dns_server():
-    resolver = AcmeResolver()
-    dns_tcp = DNSServer(resolver, port=DNS_PORT, address=LISTEN_IP, tcp=True)
-    dns_udp = DNSServer(resolver, port=DNS_PORT, address=LISTEN_IP, tcp=False)
-    dns_tcp.start_thread()
-    dns_udp.start_thread()
-    logging.info("DNS server running on %s:%s", LISTEN_IP, DNS_PORT)
-
-
-def start_http_server():
-    logging.info("HTTP server running on 0.0.0.0:%s", HTTP_PORT)
-    app.run(host="0.0.0.0", port=HTTP_PORT)
-
-
 def query_upstream(qname: str, qtype: str, timeout: float = 1.0) -> dns.message.Message:
     logging.info("query_upstream %s %s", qname, qtype)
     name = qname if "." in qname else f"{qname}.model.svc.cluster.local"
@@ -139,7 +124,6 @@ def dns_to_dnslib(
     dnspython_response: dns.message.Message, original_dnslib_request: DNSRecord
 ) -> DNSRecord:
     reply = original_dnslib_request.reply()
-
     for answer in dnspython_response.answer:
         logging.info("dns_to_dnslib: %s", answer)
         for item in answer.items:
@@ -154,7 +138,6 @@ def dns_to_dnslib(
                 rdata = AAAA(str(item.address))
                 logging.info("dsn_to_dislib: AAAA: %s", rdata)
             # Add other types as needed
-
             logging.info("dsn_to_dislib: rdata: %s", rdata)
             if rdata:
                 reply.add_answer(
@@ -165,8 +148,22 @@ def dns_to_dnslib(
                         ttl=answer.ttl,
                     )
                 )
-
     return reply
+
+
+# --- Run both servers ---
+def start_dns_server():
+    resolver = AcmeResolver()
+    dns_tcp = DNSServer(resolver, port=DNS_PORT, address=LISTEN_IP, tcp=True)
+    dns_udp = DNSServer(resolver, port=DNS_PORT, address=LISTEN_IP, tcp=False)
+    dns_tcp.start_thread()
+    dns_udp.start_thread()
+    logging.info("DNS server running on %s:%s", LISTEN_IP, DNS_PORT)
+
+
+def start_http_server():
+    logging.info("HTTP server running on 0.0.0.0:%s", HTTP_PORT)
+    app.run(host="0.0.0.0", port=HTTP_PORT)
 
 
 if __name__ == "__main__":
