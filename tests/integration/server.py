@@ -22,8 +22,10 @@ import logging
 import dns.exception
 import dns.message
 import dns.query
+import dns.rdtypes
 from dnslib import AAAA, NS, QTYPE, RR, SOA, TXT, A
-from dnslib.server import BaseResolver, DNSServer
+from dnslib.dns import DNSRecord
+from dnslib.server import BaseResolver, DNSHandler, DNSServer
 from flask import Flask, request
 
 # --- Configuration ---
@@ -43,6 +45,7 @@ app = Flask(__name__)
 def present():
     data = request.json
     app.logger.info("/present %s", data)
+    assert data is not None
     fqdn = data["fqdn"].rstrip(".")
     value = data["value"]
     challenge_map[fqdn] = value
@@ -54,6 +57,7 @@ def present():
 def cleanup():
     data = request.json
     app.logger.info("/cleanup %s", data)
+    assert data is not None
     fqdn = data["fqdn"].rstrip(".")
     removed = challenge_map.pop(fqdn, None)
     if removed:
@@ -63,10 +67,7 @@ def cleanup():
 
 # --- DNS resolver ---
 class AcmeResolver(BaseResolver):
-    # def __init__(self, fallback_addr):
-    #    self.fallback = ProxyResolver(fallback_addr, DNS_PORT)
-
-    def resolve(self, request, handler):
+    def resolve(self, request: DNSRecord, handler: DNSHandler) -> DNSRecord:
         logging.info("\n>>>%s\nresolve %s", challenge_map, request)
         qname = str(request.q.qname).rstrip(".")
         qtype = QTYPE[request.q.qtype]
@@ -133,7 +134,7 @@ def start_http_server():
     app.run(host="0.0.0.0", port=HTTP_PORT)
 
 
-def query_upstream(qname, qtype, timeout=1.0):
+def query_upstream(qname: str, qtype: str, timeout: float = 1.0) -> dns.message.Message:
     logging.info("query_upstream %s %s", qname, qtype)
     name = qname if "." in qname else f"{qname}.model.svc.cluster.local"
     dns_request = dns.message.make_query(name, qtype)
@@ -142,7 +143,9 @@ def query_upstream(qname, qtype, timeout=1.0):
     return response
 
 
-def dns_to_dnslib(dnspython_response, original_dnslib_request):
+def dns_to_dnslib(
+    dnspython_response: dns.message.Message, original_dnslib_request: DNSRecord
+) -> DNSRecord:
     reply = original_dnslib_request.reply()
 
     for answer in dnspython_response.answer:
@@ -150,11 +153,11 @@ def dns_to_dnslib(dnspython_response, original_dnslib_request):
         for item in answer.items:
             logging.info("dsn_to_dislib: item: %s %s", type(item), item)
             rdata = None
-            if isinstance(item, dns.rdtypes.IN.A.A):
+            if isinstance(item, dns.rdtypes.IN.A.A):  # type: ignore
                 logging.info("dsn_to_dislib: A")
                 rdata = A(str(item.address))
                 logging.info("dsn_to_dislib: A: %s", rdata)
-            elif isinstance(item, dns.rdtypes.IN.AAAA.AAAA):
+            elif isinstance(item, dns.rdtypes.IN.AAAA.AAAA):  # type: ignore
                 logging.info("dsn_to_dislib: AAAA")
                 rdata = AAAA(str(item.address))
                 logging.info("dsn_to_dislib: AAAA: %s", rdata)
