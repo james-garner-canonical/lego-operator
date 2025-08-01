@@ -5,7 +5,6 @@
 import logging
 import pathlib
 import subprocess
-import time
 import urllib.request
 
 import jubilant
@@ -103,12 +102,18 @@ def test_deploy_functional(juju: jubilant.Juju, charm_path: pathlib.Path):
     # deploy our challenge listener + dns resolver into the lego container
     juju.scp("tests/integration/server.py", "lego/0:/")
     juju.scp("tests/integration/requirements.txt", "lego/0:/")
-    juju.ssh("lego/0", "cd / && curl -LsSf https://astral.sh/uv/install.sh | sh && /root/.local/bin/uv venv && /root/.local/bin/uv pip install -r requirements.txt && echo -e 'search model.svc.cluster.local svc.cluster.local cluster.local\nnameserver 127.0.0.1\noptions ndots:5' > /etc/resolv.conf")
+    juju.ssh(
+        "lego/0",
+        "cd / && curl -LsSf https://astral.sh/uv/install.sh | sh && /root/.local/bin/uv venv && /root/.local/bin/uv pip install -r requirements.txt && echo -e 'search model.svc.cluster.local svc.cluster.local cluster.local\nnameserver 127.0.0.1\noptions ndots:5' > /etc/resolv.conf",
+    )
     # juju.ssh("lego/0", "curl -LsSf https://astral.sh/uv/install.sh | sh && uv pip nohup /root/.local/bin/uv run --script /server.py > /server.log2 2>&1 &")
     # juju.ssh("lego/0", "echo -e 'search model.svc.cluster.local svc.cluster.local cluster.local\nnameserver 127.0.0.1\noptions ndots:5' > /etc/resolv.conf")
     # juju.ssh uses subprocess with a ['list', 'of', 'args'], which mangles the quoting on our bash -c
-    subprocess.check_output('juju ssh lego/0 "cd / && bash -c \'source .venv/bin/activate && nohup python3 server.py > /server.log2 2>&1 & sleep 1\'"', shell=True)
-    #echo -e 'search model.svc.cluster.local svc.cluster.local cluster.local\nnameserver 10.152.183.10\noptions ndots:5' > /etc/resolv.conf
+    subprocess.check_output(
+        "juju ssh lego/0 \"cd / && bash -c 'source .venv/bin/activate && nohup python3 server.py > /server.log2 2>&1 & sleep 1'\"",
+        shell=True,
+    )
+    # echo -e 'search model.svc.cluster.local svc.cluster.local cluster.local\nnameserver 10.152.183.10\noptions ndots:5' > /etc/resolv.conf
 
     juju.integrate("lego", "tls-certificates-requirer")
     # failure to acquire certificate doesn't show up in status, only in logs ...
