@@ -19,10 +19,10 @@ Run as root or with CAP_NET_BIND_SERVICE to bind to port 53.
 
 import logging
 
+import dns.exception
 import dns.message
 import dns.query
-import dns.exception
-from dnslib import A, AAAA, NS, QTYPE, RR, SOA, TXT
+from dnslib import AAAA, NS, QTYPE, RR, SOA, TXT, A
 from dnslib.server import BaseResolver, DNSServer
 from flask import Flask, request
 
@@ -63,7 +63,7 @@ def cleanup():
 
 # --- DNS resolver ---
 class AcmeResolver(BaseResolver):
-    #def __init__(self, fallback_addr):
+    # def __init__(self, fallback_addr):
     #    self.fallback = ProxyResolver(fallback_addr, DNS_PORT)
 
     def resolve(self, request, handler):
@@ -77,49 +77,45 @@ class AcmeResolver(BaseResolver):
             reply.add_answer(RR(qname, QTYPE.TXT, rdata=TXT(txt_value), ttl=30))
             logging.info("Resolved TXT %s -> %s", qname, txt_value)
             return reply
-        elif qtype == 'SOA':  # and any(qname.endswith(k) for k in challenge_map):
+        elif qtype == "SOA":  # and any(qname.endswith(k) for k in challenge_map):
             # Construct a synthetic SOA record
             soa_record = SOA(
-                mname="ns.mock.",   # Primary name server
+                mname="ns.mock.",  # Primary name server
                 rname="admin.mock.",  # Responsible party
-                times=(2025080101, 3600, 1800, 604800, 86400)  # Serial, Refresh, Retry, Expire, Minimum
+                times=(
+                    2025080101,
+                    3600,
+                    1800,
+                    604800,
+                    86400,
+                ),  # Serial, Refresh, Retry, Expire, Minimum
             )
             reply.add_answer(RR(qname, QTYPE.SOA, rdata=soa_record, ttl=300))
             logging.info("Responded with SOA for %s", qname)
             return reply
-        elif qtype == 'NS' and any(qname.endswith(k) for k in challenge_map):
+        elif qtype == "NS" and any(qname.endswith(k) for k in challenge_map):
             ns_record = NS("ns.mock.")
             reply.add_answer(RR(qname, QTYPE.NS, rdata=ns_record, ttl=300))
             logging.info("Responded with NS for %s with %s", qname, ns_record)
             return reply
-        elif qtype == 'A' and qname == 'ns.mock':
+        elif qtype == "A" and qname == "ns.mock":
             reply.add_answer(RR(qname, QTYPE.A, rdata=A("127.0.0.1"), ttl=300))
             return reply
-        elif qtype == 'AAAA' and qname == 'ns.mock':
+        elif qtype == "AAAA" and qname == "ns.mock":
             reply.add_answer(RR(qname, QTYPE.AAAA, rdata=AAAA("::1"), ttl=300))
             return reply
-        elif qtype == 'CNAME' and qname != 'ns.mock':
-            logging.info("Received CNAME query for %s, responding with NOERROR and no answer: %s", qname, reply)
+        elif qtype == "CNAME" and qname != "ns.mock":
+            logging.info(
+                "Received CNAME query for %s, responding with NOERROR and no answer: %s",
+                qname,
+                reply,
+            )
             # No CNAME means no answer, but we explicitly return NOERROR
             return reply
         else:
             # Fallback with dnspython
             upstream_response = query_upstream(qname, qtype)
-            if upstream_response:
-                return dns_to_dnslib(upstream_response, request)
-
-            return reply  # empty response if fallback fails
-            # Fallback to real DNS
-            #return self.fallback.resolve(request, handler)
-            # Fallback to upstream manually using DNSClient
-            client = DNSClient(DNS_UPSTREAM, port=DNS_PORT, tcp=handler.protocol == 'tcp')
-            try:
-                response = client.send(request)
-            except Exception as e:
-                logging.error("DNS fallback failed: %s", e)
-                return reply  # Empty reply
-            else:
-                return response
+            return dns_to_dnslib(upstream_response, request)
 
 
 # --- Run both servers ---
@@ -139,15 +135,11 @@ def start_http_server():
 
 def query_upstream(qname, qtype, timeout=1.0):
     logging.info("query_upstream %s %s", qname, qtype)
-    try:
-        name = qname if "." in qname else f"{qname}.model.svc.cluster.local"
-        dns_request = dns.message.make_query(name, qtype)
-        response = dns.query.udp(dns_request, DNS_UPSTREAM, timeout=timeout)
-        logging.info("query_upstream %s %s response: %s", name, qtype, response)
-        return response
-    except dns.exception.DNSException as e:
-        logging.warning(f"dnspython upstream query failed: {e}")
-        return None
+    name = qname if "." in qname else f"{qname}.model.svc.cluster.local"
+    dns_request = dns.message.make_query(name, qtype)
+    response = dns.query.udp(dns_request, DNS_UPSTREAM, timeout=timeout)
+    logging.info("query_upstream %s %s response: %s", name, qtype, response)
+    return response
 
 
 def dns_to_dnslib(dnspython_response, original_dnslib_request):
@@ -170,12 +162,22 @@ def dns_to_dnslib(dnspython_response, original_dnslib_request):
 
             logging.info("dsn_to_dislib: rdata: %s", rdata)
             if rdata:
-                reply.add_answer(RR(str(answer.name), getattr(QTYPE, answer.rdtype.name), rdata=rdata, ttl=answer.ttl))
+                reply.add_answer(
+                    RR(
+                        str(answer.name),
+                        getattr(QTYPE, answer.rdtype.name),
+                        rdata=rdata,
+                        ttl=answer.ttl,
+                    )
+                )
 
     return reply
 
+
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, handlers=[logging.FileHandler("/server.log", mode='a')])
+    logging.basicConfig(
+        level=logging.INFO, handlers=[logging.FileHandler("/server.log", mode="a")]
+    )
     start_dns_server()
     # Run HTTP server on main thread
     start_http_server()
