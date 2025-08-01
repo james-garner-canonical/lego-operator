@@ -9,9 +9,9 @@ spec:
   containers:
     - name: pebble
       image: ghcr.io/letsencrypt/pebble
-      args:
-       - "-dnsserver"
-       - "pebble-challtestsrv:8053"
+      #args:
+      # - "-dnsserver"
+      # - "pebble-challtestsrv:8053"
       env:
         - name: PEBBLE_VA_NOSLEEP
           value: "1"  # don't sleep a random time between everything
