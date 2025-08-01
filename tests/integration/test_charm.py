@@ -89,7 +89,7 @@ options ndots:5
     juju.ssh("lego/0", " && ".join(ssh_cmds))
     # juju.ssh uses subprocess with a ['list', 'of', 'args'], which mangles the quoting on our bash -c
     ssh_cmd = "cd / && bash -c 'source .venv/bin/activate && nohup python3 server.py > /server.log2 2>&1 & sleep 1'"
-    subprocess.check_output(f"juju ssh lego/0 \"{ssh_cmd}\"", shell=True)
+    subprocess.check_output(f'juju ssh lego/0 "{ssh_cmd}"', shell=True)
 
     # request certificate
     juju.integrate("lego", "tls-certificates-requirer")
