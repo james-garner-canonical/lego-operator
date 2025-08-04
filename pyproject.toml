@@ -17,7 +17,6 @@ test = [
     "coverage[toml]",
     "jubilant",
     "pytest",
-    "pytest-asyncio==0.21.2",
     "ops[testing]",
 ]
 dev = [
